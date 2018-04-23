@@ -3,6 +3,8 @@ const bodyParser = require('body-parser');
 const {ObjectID} = require('mongodb');
 const validator = require('express-validator');
 
+
+
 var mongoose = require('./db/mongodb');
 var {User} = require('./lib/model/user');
 
@@ -11,22 +13,26 @@ var app = express();
 app.use(bodyParser.json());
 app.use(validator());
 
-app.post('/api/users',(req,res) =>{
-    req.check(req.body.email,"Enter a valid Email address").isEmail();
+app.post('/api/users',(req,res) =>{ 
+  // console.log('email);
+        req.checkBody('name',"Name should be a string").isString();
+        req.checkBody("email","Enter a valid Email address").isString();
+
     var newUser = new User({
       name : req.body.name,
       email : req.body.email
     });
     var errors = req.validationErrors();
+    console.log(errors);
     if (errors) {
-      res.send(errors);
-      return;
+        res.status(400).send();
     } else {
         newUser.save().then((users)=>{
             res.send(users);
           }, (error)=>{
             res.status(400).send();
-          });
+    
+        });
     }
   
 });
