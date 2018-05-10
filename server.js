@@ -76,7 +76,7 @@ app.patch('/api/users/:id', (req, res) => {
 
 app.post('/api/users', (req, res) => {
     var body = _.pick(req.body, ['name', 'email', 'password']);
-    var newUser = new User(body);
+    var newUser = new User({body});
     newUser.save().then((users) => {
         res.send(JSON.stringify(users, undefined, 2));
     }).catch((error) => {
