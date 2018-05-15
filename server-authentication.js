@@ -4,8 +4,9 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const { ObjectID } = require('mongodb');
 const validator = require('express-validator');
-
-
+const permission = require('permission');
+const { authenticate } = require('./middleware/authenticate');
+const { verifyUser } = require('./middleware/authorisation');
 
 
 var mongoose = require('./db/mongodb');
@@ -28,32 +29,19 @@ app.get('/api/users', (req, res) => {
     })
 });
 
-app.get('/api/user/:id', (req, res) => {
-    var id = req.params.id;
-    if (!ObjectID.isValid(id)) {
-        return res.status(404).send({ status: 404, message: 'ID not valid' });
-    }
-    User.findById(id).then(() => {
-        res.send(JSON.stringify(user, undefined, 2));
-    }).catch((error) => {
-        res.status(400).send({ status: 400, message: 'Bad request' });
-    });
-});
+// app.delete('/api/v1/users/:id', verifyUser, (req, res) => {
+//     var id = req.params.id;
+//     if (!ObjectID.isValid(id)) {
+//         return res.status(404).send({ status: 404, message: 'ID not valid' });
+//     }
+//     User.findByIdAndRemove(id).then(() => {
+//         res.send(JSON.stringify(user, undefined, 2));
+//     }).catch((error) => {
+//         res.status(400).send({ status: 400, message: 'Bad request' });
+//     });
+// });
 
-
-app.delete('/api/users/:id', (req, res) => {
-    var id = req.params.id;
-    if (!ObjectID.isValid(id)) {
-        return res.status(404).send({ status: 404, message: 'ID not valid' });
-    }
-    User.findByIdAndRemove(id).then(() => {
-        res.send(JSON.stringify(user, undefined, 2));
-    }).catch((error) => {
-        res.status(400).send({ status: 400, message: 'Bad request' });
-    });
-});
-
-app.patch('/api/users/:id', (req, res) => {
+app.patch('/api/users/:id', authenticate, (req, res) => {
     var id = req.params.id;
     if (!ObjectID.isValid(id)) {
         return res.status(404).send({ status: 404, message: 'ID not valid' });
@@ -70,8 +58,10 @@ app.patch('/api/users/:id', (req, res) => {
     })
 });
 
-app.post('/api/users', (req, res) => {
-    var body = _.pick(req.body, ['name', 'email', 'password']);
+
+// Sign up 
+app.post('/api/v1/users', (req, res) => {
+    var body = _.pick(req.body, ['name', 'email', 'password','admin']);
     var user = new User(body);
     user.save().then(() => {
         return user.generateAuthToken();
@@ -83,6 +73,42 @@ app.post('/api/users', (req, res) => {
     });
 });
 
+app.get('/api/v1/users/:id', authenticate,(req, res) => {
+    var id = req.params.id;
+    if (!ObjectID.isValid(id)) {
+        return res.status(404).send({ status: 404, message: 'ID not valid' });
+    }
+    User.findById(id).then((user) => {
+        res.send(JSON.stringify(user, undefined, 2));
+    }).catch((error) => {
+        console.log(error);
+        res.status(400).send({ status: 400, message: 'Bad request' });
+    });
+});
+
+//Login
+
+app.post('/api/v1/login', async(req, res) => {
+    var body = _.pick(req.body, ['email', 'password']);
+    User.findByCredentials(body.email, body.password).then((user) => {
+        console.log(user);
+        return user.generateAuthToken().then((token) => {
+          res.header('x-auth', token).send(user);
+        });
+      }).catch((e) => {
+        res.status(400).send({ status: 400, message: 'Invalid data' });
+      });
+    });
+
+app.delete('/api/v1/users/token',verifyUser,(req,res) =>{
+    req.user.removeToken(req.token).then(()=>{
+        res.status(200).send({ status: 200, message: 'Logged out successfully' });
+    }).catch((error)=>{
+        res.status(400).send({ status: 400, message: 'Invalid data' });
+    })
+});
+
+
 app.get('/users/me' , (req,res) =>{
     var token = req.header('x-auth');
     console.log('Token from header',token);
@@ -92,10 +118,6 @@ app.get('/users/me' , (req,res) =>{
         }
         res.send(user);
     });
-
-});
-
-app.post('/users/me',(req,res)=>{
 
 });
 
