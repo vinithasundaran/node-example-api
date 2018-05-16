@@ -70,7 +70,6 @@ UserSchema.methods.generateAuthToken = function () {
         _id : user._id.toHexString(),
         access
     }, "secret").toString();
-    console.log(token);
     user.tokens = user.tokens.concat([{access,token}]);
 
     return user.save().then(() =>{

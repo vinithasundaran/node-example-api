@@ -18,9 +18,11 @@
     "express-validator": "^5.1.2",
     "jsonwebtoken": "^8.2.1",
     "lodash": "^4.17.5",
+    "moment": "^2.22.1",
     "mongodb": "^3.0.7",
     "mongoose": "^5.0.15",
     "permission": "^1.1.0",
+    "socket.io": "^2.1.0",
     "validator": "^9.4.1",
     "yargs": "^11.0.0"
   }

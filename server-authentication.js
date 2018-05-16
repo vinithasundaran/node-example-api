@@ -5,17 +5,26 @@ const bodyParser = require('body-parser');
 const { ObjectID } = require('mongodb');
 const validator = require('express-validator');
 const permission = require('permission');
+const socket = require('socket.io');
+const http = require('http');
+
+
 const { authenticate } = require('./middleware/authenticate');
 const { verifyUser } = require('./middleware/authorisation');
-
-
-var mongoose = require('./db/mongodb');
-var { User } = require('./lib/model/user-authentication');
+const mongoose = require('./db/mongodb');
+const { User } = require('./js/libs/model/user-authentication');
+const {emailEvents} = require('./socket');
 
 var app = express();
 
 app.use(bodyParser.json());
 app.use(validator());
+
+app.use(express.static(__dirname));
+
+
+var server = http.createServer(app);
+var io = socket(server);
 
 
 app.get('/api/users', (req, res) => {
@@ -61,19 +70,19 @@ app.patch('/api/users/:id', authenticate, (req, res) => {
 
 // Sign up 
 app.post('/api/v1/users', (req, res) => {
-    var body = _.pick(req.body, ['name', 'email', 'password','admin']);
+    var body = _.pick(req.body, ['name', 'email', 'password', 'admin']);
     var user = new User(body);
     user.save().then(() => {
         return user.generateAuthToken();
     }).then((token) => {
-        console.log('User',user);
-        res.header('x-auth',token).send(user);
+        emailEvents(io,user);
+        res.header('x-auth', token).send(user);
     }).catch((error) => {
         res.status(400).send(error);
     });
 });
 
-app.get('/api/v1/users/:id', authenticate,(req, res) => {
+app.get('/api/v1/users/:id', authenticate, (req, res) => {
     var id = req.params.id;
     if (!ObjectID.isValid(id)) {
         return res.status(404).send({ status: 404, message: 'ID not valid' });
@@ -88,32 +97,32 @@ app.get('/api/v1/users/:id', authenticate,(req, res) => {
 
 //Login
 
-app.post('/api/v1/login', async(req, res) => {
+app.post('/api/v1/login', async (req, res) => {
     var body = _.pick(req.body, ['email', 'password']);
     User.findByCredentials(body.email, body.password).then((user) => {
         console.log(user);
         return user.generateAuthToken().then((token) => {
-          res.header('x-auth', token).send(user);
+            res.header('x-auth', token).send(user);
         });
-      }).catch((e) => {
+    }).catch((e) => {
         res.status(400).send({ status: 400, message: 'Invalid data' });
-      });
     });
+});
 
-app.delete('/api/v1/users/token',verifyUser,(req,res) =>{
-    req.user.removeToken(req.token).then(()=>{
+app.delete('/api/v1/users/token', verifyUser, (req, res) => {
+    req.user.removeToken(req.token).then(() => {
         res.status(200).send({ status: 200, message: 'Logged out successfully' });
-    }).catch((error)=>{
+    }).catch((error) => {
         res.status(400).send({ status: 400, message: 'Invalid data' });
     })
 });
 
 
-app.get('/users/me' , (req,res) =>{
+app.get('/users/me', (req, res) => {
     var token = req.header('x-auth');
-    console.log('Token from header',token);
-    User.findByToken(token).then((user)=>{
-        if(!user) {
+    console.log('Token from header', token);
+    User.findByToken(token).then((user) => {
+        if (!user) {
             return res.status(404).send({ "message": "Token not found" });
         }
         res.send(user);
@@ -121,7 +130,9 @@ app.get('/users/me' , (req,res) =>{
 
 });
 
-app.listen('3000', () => {
+
+
+server.listen('3000', () => {
     console.log('Conected to server');
 });
 

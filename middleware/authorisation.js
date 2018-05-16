@@ -1,4 +1,4 @@
-const {User} = require('./../lib/model/user-authentication');
+const {User} = require('./../js/libs/model/user-authentication');
 
 var verifyUser = (req,res,next) =>{
     var token = req.header('x-auth');

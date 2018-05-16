@@ -5,9 +5,6 @@ const bodyParser = require('body-parser');
 const { ObjectID } = require('mongodb');
 const validator = require('express-validator');
 
-
-
-
 var mongoose = require('./db/mongodb');
 var { User } = require('./lib/model/user');
 
